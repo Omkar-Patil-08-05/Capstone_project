@@ -1,0 +1,31 @@
+# ROS2 build
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual env
+venv/
+.env/
+
+# VS Code
+.vscode/
+
+# System
+.DS_Store
+
+# Logs
+*.log
+
+# Temp
+*.tmp
+
+# Large files (optional)
+*.bag
+
+# Ignore duplicate model copies
+marl_drone_project/qmix_phase1.pth
