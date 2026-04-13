@@ -1,31 +1,17 @@
 import subprocess
-import random
+import time
 
 
 class ActionMapper:
 
     def __init__(self):
         self.grid_size = 25
-        self.offset = -12
+        self.offset = -11  # safe offset
 
-    def execute_action(self, drone_name, action, current_pos, occupied):
-
-        import time
-
+    def get_next_pos(self, current_pos, action):
         x, y, z = current_pos
         nx, ny = x, y
 
-        # boundary correction
-        if x <= 0:
-            action = 0
-        elif x >= self.grid_size - 1:
-            action = 1
-        elif y <= 0:
-            action = 2
-        elif y >= self.grid_size - 1:
-            action = 3
-
-        # action map
         if action == 0:
             nx = x + 1
         elif action == 1:
@@ -35,28 +21,36 @@ class ActionMapper:
         elif action == 3:
             ny = y - 1
 
-        nx = max(0, min(self.grid_size - 1, nx))
-        ny = max(0, min(self.grid_size - 1, ny))
+        # clamp safe range
+        nx = max(1, min(23, nx))
+        ny = max(1, min(23, ny))
 
-        # collision avoidance
+        return [nx, ny, z]
+
+    def execute_action(self, drone_name, action, current_pos, occupied):
+
+        x, y, z = current_pos
+
+        next_pos = self.get_next_pos(current_pos, action)
+        nx, ny = next_pos[0], next_pos[1]
+
         if (nx, ny) in occupied:
             return current_pos
 
-        # 🔥 INTERPOLATION (THIS FIXES JUMPING)
-        steps = 5
+        steps = 4
         for i in range(1, steps + 1):
             ix = x + (nx - x) * (i / steps)
             iy = y + (ny - y) * (i / steps)
 
-            wx = ix + self.offset
-            wy = iy + self.offset
+            wx = ix - 11
+            wy = iy - 11
 
             cmd = f'gz service -s /world/default/set_pose --reqtype gz.msgs.Pose --reptype gz.msgs.Boolean --timeout 100 --req \'name: "{drone_name}", position: {{ x: {wx}, y: {wy}, z: 2 }}\''
 
             subprocess.run(cmd, shell=True,
-                        stdout=subprocess.DEVNULL,
-                        stderr=subprocess.DEVNULL)
+                           stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL)
 
-            time.sleep(0.02)
+            time.sleep(0.04)
 
         return [nx, ny, 2.0]
