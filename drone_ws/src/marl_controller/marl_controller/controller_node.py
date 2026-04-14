@@ -33,30 +33,23 @@ class ControllerNode(Node):
 
         self.visited = set()
 
-        # anti-oscillation memory
         self.history = {
-            name: deque(maxlen=5)
+            name: deque(maxlen=6)
             for name in self.drone_names
         }
 
         self.qmix = None
 
-        self.timer = self.create_timer(0.1, self.control_loop)
+        self.step_count = 0
+
+        # 🔥 slower loop (MANDATORY)
+        self.timer = self.create_timer(0.6, self.control_loop)
 
         self.get_logger().info("🚀 MARL Controller Started")
 
-    def distance_to_unvisited(self, pos):
-        min_dist = float('inf')
-
-        for x in range(25):
-            for y in range(25):
-                if (x, y) not in self.visited:
-                    d = abs(pos[0] - x) + abs(pos[1] - y)
-                    min_dist = min(min_dist, d)
-
-        return min_dist if min_dist != float('inf') else 0
-
     def control_loop(self):
+
+        self.step_count += 1
 
         ordered_positions = [
             self.current_positions[name]
@@ -79,86 +72,70 @@ class ControllerNode(Node):
         q_actions = self.qmix.get_actions(states)
 
         occupied = set()
+        center = (12, 12)
+
+        new_positions = {}
 
         for i, drone_name in enumerate(self.drone_names):
 
             pos = self.current_positions[drone_name]
             q_action = q_actions[i] % 4
 
-            candidate_actions = [0, 1, 2, 3]
-            valid_actions = []
+            best_action = None
+            best_score = -999
 
-            # 🔥 STRICT FILTERING
-            for a in candidate_actions:
+            for a in [0, 1, 2, 3]:
 
                 test_pos = self.action_mapper.get_next_pos(pos, a)
                 x, y = test_pos[0], test_pos[1]
 
-                # ❌ anti-oscillation
-                if (x, y) in self.history[drone_name]:
-                    continue
-
-                # ❌ collision avoidance
                 if (x, y) in occupied:
                     continue
 
-                # ❌ STRICT BOUNDARY BUFFER (CRITICAL)
-                if x <= 2 or x >= 22 or y <= 2 or y >= 22:
-                    continue
+                score = 0
 
-                valid_actions.append(a)
+                # 🔥 STRONG exploration reward
+                if (x, y) not in self.visited:
+                    score += 50
+                else:
+                    score -= 10
 
-            # fallback if nothing valid
-            if not valid_actions:
-                valid_actions = candidate_actions
+                # 🔥 FORCE center attraction (fix border issue)
+                center_dist = abs(x - center[0]) + abs(y - center[1])
+                score += 10 / (center_dist + 1)
 
-            # 🔥 QMIX PRIORITY
-            if q_action in valid_actions:
-                action = q_action
-            else:
-                # fallback logic (light guidance only)
-                best_action = None
-                best_score = -1
+                # 🔥 HEAVY border penalty
+                if x < 3 or x > 21 or y < 3 or y > 21:
+                    score -= 20
 
-                for a in valid_actions:
-                    test_pos = self.action_mapper.get_next_pos(pos, a)
+                # 🔥 anti-oscillation
+                if (x, y) in self.history[drone_name]:
+                    score -= 15
 
-                    score = 0
+                # 🔥 QMIX small bias
+                if a == q_action:
+                    score += 3
 
-                    if (test_pos[0], test_pos[1]) not in self.visited:
-                        score += 10
+                if score > best_score:
+                    best_score = score
+                    best_action = a
 
-                    dist = self.distance_to_unvisited(test_pos)
-                    score += 5 / (dist + 1)
+            if best_action is None:
+                best_action = q_action
 
-                    if score > best_score:
-                        best_score = score
-                        best_action = a
+            new_pos = self.action_mapper.get_next_pos(pos, best_action)
 
-                action = best_action
+            new_positions[drone_name] = new_pos
+            occupied.add((new_pos[0], new_pos[1]))
 
-            # execute
-            new_pos = self.action_mapper.execute_action(
-                drone_name,
-                action,
-                pos,
-                occupied
-            )
+        # 🔥 EXECUTE WITH DELAY (KEY FIX)
+        for drone_name, pos in new_positions.items():
 
-            # 🔥 FINAL HARD CLAMP (MOST IMPORTANT FIX)
-            nx = int(round(new_pos[0]))
-            ny = int(round(new_pos[1]))
+            self.action_mapper.execute_move(drone_name, pos)
 
-            nx = max(2, min(22, nx))
-            ny = max(2, min(22, ny))
-
-            new_pos = [nx, ny, 2.0]
-
-            self.current_positions[drone_name] = new_pos
-            occupied.add((nx, ny))
-            self.visited.add((nx, ny))
-
-            self.history[drone_name].append((nx, ny))
+            self.current_positions[drone_name] = pos
+            self.visited.add((pos[0], pos[1]))
+            self.history[drone_name].append((pos[0], pos[1]))
 
         coverage = len(self.visited) / (25 * 25)
         print(f"🔥 Coverage: {coverage:.2f}")
