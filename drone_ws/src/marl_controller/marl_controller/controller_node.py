@@ -41,8 +41,8 @@ class ControllerNode(Node):
 
         self.qmix = None
 
-        # 🔥 slower = smooth + no overload
-        self.timer = self.create_timer(0.5, self.control_loop)
+        #  slower = smooth + no overload
+        self.timer = self.create_timer(0.8, self.control_loop)
 
         self.get_logger().info("MARL Controller Started")
 

@@ -1,6 +1,7 @@
 #!/bin/bash
 
 OFFSET=-12
+MODEL_PATH="/home/capstone/capstone_project/models/simple_drone/model.sdf"
 
 spawn() {
   NAME=$1
@@ -10,11 +11,12 @@ spawn() {
   gz service -s /world/default/create \
   --reqtype gz.msgs.EntityFactory \
   --reptype gz.msgs.Boolean \
-  --timeout 300 \
-  --req "sdf: '<sdf version=\"1.7\"><model name=\"$NAME\"><static>true</static><pose>$X $Y 2 0 0 0</pose><link name=\"base_link\"><inertial><mass>1.0</mass></inertial><visual name=\"body\"><geometry><cylinder><radius>0.2</radius><length>0.08</length></cylinder></geometry><material><diffuse>0.2 0.2 0.8 1</diffuse></material></visual><visual name=\"arm1\"><pose>0.4 0 0 0 0 0</pose><geometry><box><size>0.8 0.05 0.02</size></box></geometry><material><diffuse>0.8 0.2 0.2 1</diffuse></material></visual><visual name=\"arm2\"><pose>0 0.4 0 0 0 0</pose><geometry><box><size>0.05 0.8 0.02</size></box></geometry><material><diffuse>0.2 0.8 0.2 1</diffuse></material></visual></link></model></sdf>'"
+  --timeout 5000 \
+  --req "name: '$NAME', sdf_filename: '$MODEL_PATH', pose: {position: {x: $X, y: $Y, z: 2.0}}"
+
+  sleep 0.2
 }
 
-# 2D GRID (WITH OFFSET)
 spawn drone1 $((2+OFFSET)) $((2+OFFSET))
 spawn drone2 $((12+OFFSET)) $((2+OFFSET))
 spawn drone3 $((22+OFFSET)) $((2+OFFSET))

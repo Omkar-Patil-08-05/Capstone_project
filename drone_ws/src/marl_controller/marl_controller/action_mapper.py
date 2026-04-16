@@ -41,4 +41,4 @@ class ActionMapper:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL
         )
-        time.sleep(0.099)
+        time.sleep(0.08)

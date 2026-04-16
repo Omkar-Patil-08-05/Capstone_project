@@ -1,0 +1,109 @@
+<sdf version="1.7">
+  <model name="simple_drone">
+    <static>true</static>
+
+    <link name="base_link">
+
+      <inertial>
+        <mass>1.0</mass>
+      </inertial>
+
+      <!-- BODY -->
+      <visual name="body">
+        <geometry>
+          <box>
+            <size>0.3 0.3 0.08</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.1 0.4 1 1</ambient>
+          <diffuse>0.1 0.4 1 1</diffuse>
+        </material>
+      </visual>
+
+      <!-- ARM X -->
+      <visual name="arm_x">
+        <geometry>
+          <box>
+            <size>0.8 0.05 0.02</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 0.1 0.1 1</ambient>
+          <diffuse>1 0.1 0.1 1</diffuse>
+        </material>
+      </visual>
+
+      <!-- ARM Y -->
+      <visual name="arm_y">
+        <geometry>
+          <box>
+            <size>0.05 0.8 0.02</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.1 1 0.1 1</ambient>
+          <diffuse>0.1 1 0.1 1</diffuse>
+        </material>
+      </visual>
+
+      <!-- PROPELLERS -->
+      <visual name="prop1">
+        <pose>0.4 0.4 0.05 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.07</radius>
+            <length>0.01</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+        </material>
+      </visual>
+
+      <visual name="prop2">
+        <pose>-0.4 0.4 0.05 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.07</radius>
+            <length>0.01</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+        </material>
+      </visual>
+
+      <visual name="prop3">
+        <pose>0.4 -0.4 0.05 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.07</radius>
+            <length>0.01</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+        </material>
+      </visual>
+
+      <visual name="prop4">
+        <pose>-0.4 -0.4 0.05 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.07</radius>
+            <length>0.01</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1 1 1 1</ambient>
+          <diffuse>1 1 1 1</diffuse>
+        </material>
+      </visual>
+
+    </link>
+  </model>
+</sdf>
