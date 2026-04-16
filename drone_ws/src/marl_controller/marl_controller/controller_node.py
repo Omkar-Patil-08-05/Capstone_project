@@ -1,6 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from collections import deque
+import random
 
 from marl_controller.state_builder import StateBuilder
 from marl_controller.qmix_inference import QMIXInference
@@ -34,22 +35,28 @@ class ControllerNode(Node):
         self.visited = set()
 
         self.history = {
-            name: deque(maxlen=6)
+            name: deque(maxlen=5)
             for name in self.drone_names
         }
 
         self.qmix = None
 
-        self.step_count = 0
+        # 🔥 slower = smooth + no overload
+        self.timer = self.create_timer(0.5, self.control_loop)
 
-        # 🔥 slower loop (MANDATORY)
-        self.timer = self.create_timer(0.6, self.control_loop)
+        self.get_logger().info("MARL Controller Started")
 
-        self.get_logger().info("🚀 MARL Controller Started")
+    # ---------- helper ----------
+    def get_unvisited_targets(self):
+        targets = []
+        for x in range(25):
+            for y in range(25):
+                if (x, y) not in self.visited:
+                    targets.append((x, y))
+        return targets
 
+    # ---------- main loop ----------
     def control_loop(self):
-
-        self.step_count += 1
 
         ordered_positions = [
             self.current_positions[name]
@@ -67,78 +74,87 @@ class ControllerNode(Node):
                 state_size=len(states[0]),
                 action_size=6
             )
-            print("✅ QMIX Loaded")
+            print("QMIX Loaded")
 
         q_actions = self.qmix.get_actions(states)
 
         occupied = set()
-        center = (12, 12)
-
         new_positions = {}
 
+        coverage = len(self.visited) / (25 * 25)
+
+        cleanup_mode = coverage > 0.6
+        final_mode = coverage > 0.9
+
+        targets = self.get_unvisited_targets()
+
+        # ✅ ALL DRONES MOVE
         for i, drone_name in enumerate(self.drone_names):
 
             pos = self.current_positions[drone_name]
-            q_action = q_actions[i] % 4
 
-            best_action = None
-            best_score = -999
+            best_score = -1e9
+            best_pos = pos
 
-            for a in [0, 1, 2, 3]:
+            for a in range(4):
 
                 test_pos = self.action_mapper.get_next_pos(pos, a)
                 x, y = test_pos[0], test_pos[1]
 
-                if (x, y) in occupied:
-                    continue
-
                 score = 0
 
-                # 🔥 STRONG exploration reward
+                # strong collision penalty
+                if (x, y) in occupied:
+                    score -= 300
+
+                # exploration reward
                 if (x, y) not in self.visited:
-                    score += 50
+                    score += 30
                 else:
+                    score -= 5
+
+                # distance to nearest unvisited
+                if targets:
+                    min_dist = min(abs(x - tx) + abs(y - ty) for tx, ty in targets)
+
+                    score += 25 / (min_dist + 1)
+
+                    if cleanup_mode:
+                        score += 40 / (min_dist + 1)
+
+                    if final_mode:
+                        score += 100 / (min_dist + 1)
+
+                # anti-oscillation
+                if (x, y) in self.history[drone_name]:
                     score -= 10
 
-                # 🔥 FORCE center attraction (fix border issue)
-                center_dist = abs(x - center[0]) + abs(y - center[1])
-                score += 10 / (center_dist + 1)
-
-                # 🔥 HEAVY border penalty
-                if x < 3 or x > 21 or y < 3 or y > 21:
-                    score -= 20
-
-                # 🔥 anti-oscillation
-                if (x, y) in self.history[drone_name]:
-                    score -= 15
-
-                # 🔥 QMIX small bias
-                if a == q_action:
-                    score += 3
+                # slight QMIX bias
+                if a == (q_actions[i] % 4):
+                    score += 2
 
                 if score > best_score:
                     best_score = score
-                    best_action = a
+                    best_pos = test_pos
 
-            if best_action is None:
-                best_action = q_action
+            new_positions[drone_name] = best_pos
+            occupied.add((best_pos[0], best_pos[1]))
 
-            new_pos = self.action_mapper.get_next_pos(pos, best_action)
+        # ---------- execute ----------
+        for drone_name, new_pos in new_positions.items():
 
-            new_positions[drone_name] = new_pos
-            occupied.add((new_pos[0], new_pos[1]))
+            old_pos = self.current_positions[drone_name]
 
-        # 🔥 EXECUTE WITH DELAY (KEY FIX)
-        for drone_name, pos in new_positions.items():
+            self.current_positions[drone_name] = new_pos
+            self.visited.add((new_pos[0], new_pos[1]))
+            self.history[drone_name].append((new_pos[0], new_pos[1]))
 
-            self.action_mapper.execute_move(drone_name, pos)
-
-            self.current_positions[drone_name] = pos
-            self.visited.add((pos[0], pos[1]))
-            self.history[drone_name].append((pos[0], pos[1]))
+            # 🔥 only move if changed (prevents host error)
+            if new_pos != old_pos:
+                self.action_mapper.move_drone(drone_name, new_pos)
 
         coverage = len(self.visited) / (25 * 25)
-        print(f"🔥 Coverage: {coverage:.2f}")
+        print(f"Coverage: {coverage:.2f}")
 
 
 def main(args=None):
