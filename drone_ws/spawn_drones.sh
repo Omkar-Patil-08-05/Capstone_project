@@ -1,7 +1,6 @@
 #!/bin/bash
 
 OFFSET=-12
-MODEL_PATH="/home/capstone/capstone_project/models/simple_drone/model.sdf"
 
 spawn() {
   NAME=$1
@@ -11,10 +10,9 @@ spawn() {
   gz service -s /world/default/create \
   --reqtype gz.msgs.EntityFactory \
   --reptype gz.msgs.Boolean \
-  --timeout 5000 \
-  --req "name: '$NAME', sdf_filename: '$MODEL_PATH', pose: {position: {x: $X, y: $Y, z: 2.0}}"
-
-  sleep 0.2
+  --timeout 3000 \
+  --req "name: '$NAME', sdf_filename: 'model://simple_drone', pose: {position: {x: $X, y: $Y, z: 2}}" \
+  > /dev/null 2>&1
 }
 
 spawn drone1 $((2+OFFSET)) $((2+OFFSET))

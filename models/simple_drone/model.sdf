@@ -8,20 +8,21 @@
         <mass>1.0</mass>
       </inertial>
 
-      <!-- BODY -->
+      <!-- BODY (BRIGHT CYAN, TILTED) -->
       <visual name="body">
+        <pose>0 0 0 0.08 -0.08 0</pose>
         <geometry>
           <box>
             <size>0.3 0.3 0.08</size>
           </box>
         </geometry>
         <material>
-          <ambient>0.1 0.4 1 1</ambient>
-          <diffuse>0.1 0.4 1 1</diffuse>
+          <ambient>0 1 1 1</ambient>
+          <diffuse>0 1 1 1</diffuse>
         </material>
       </visual>
 
-      <!-- ARM X -->
+      <!-- ARM X (BRIGHT RED) -->
       <visual name="arm_x">
         <geometry>
           <box>
@@ -29,12 +30,12 @@
           </box>
         </geometry>
         <material>
-          <ambient>1 0.1 0.1 1</ambient>
-          <diffuse>1 0.1 0.1 1</diffuse>
+          <ambient>1 0 0 1</ambient>
+          <diffuse>1 0 0 1</diffuse>
         </material>
       </visual>
 
-      <!-- ARM Y -->
+      <!-- ARM Y (BRIGHT GREEN) -->
       <visual name="arm_y">
         <geometry>
           <box>
@@ -42,68 +43,70 @@
           </box>
         </geometry>
         <material>
-          <ambient>0.1 1 0.1 1</ambient>
-          <diffuse>0.1 1 0.1 1</diffuse>
+          <ambient>0 1 0 1</ambient>
+          <diffuse>0 1 0 1</diffuse>
         </material>
       </visual>
 
-      <!-- PROPELLERS -->
+      <!-- PROPELLERS (SPIN BLUR STYLE) -->
+
       <visual name="prop1">
-        <pose>0.4 0.4 0.05 0 0 0</pose>
+        <pose>0.4 0.4 0.06 0 0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.07</radius>
-            <length>0.01</length>
+            <radius>0.12</radius>
+            <length>0.002</length>
           </cylinder>
         </geometry>
         <material>
-          <ambient>1 1 1 1</ambient>
-          <diffuse>1 1 1 1</diffuse>
+          <ambient>1 1 1 0.6</ambient>
+          <diffuse>1 1 1 0.6</diffuse>
         </material>
       </visual>
 
       <visual name="prop2">
-        <pose>-0.4 0.4 0.05 0 0 0</pose>
+        <pose>-0.4 0.4 0.06 0 0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.07</radius>
-            <length>0.01</length>
+            <radius>0.12</radius>
+            <length>0.002</length>
           </cylinder>
         </geometry>
         <material>
-          <ambient>1 1 1 1</ambient>
-          <diffuse>1 1 1 1</diffuse>
+          <ambient>1 1 1 0.6</ambient>
+          <diffuse>1 1 1 0.6</diffuse>
         </material>
       </visual>
 
       <visual name="prop3">
-        <pose>0.4 -0.4 0.05 0 0 0</pose>
+        <pose>0.4 -0.4 0.06 0 0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.07</radius>
-            <length>0.01</length>
+            <radius>0.12</radius>
+            <length>0.002</length>
           </cylinder>
         </geometry>
         <material>
-          <ambient>1 1 1 1</ambient>
-          <diffuse>1 1 1 1</diffuse>
+          <ambient>1 1 1 0.6</ambient>
+          <diffuse>1 1 1 0.6</diffuse>
         </material>
       </visual>
 
       <visual name="prop4">
-        <pose>-0.4 -0.4 0.05 0 0 0</pose>
+        <pose>-0.4 -0.4 0.06 0 0 0</pose>
         <geometry>
           <cylinder>
-            <radius>0.07</radius>
-            <length>0.01</length>
+            <radius>0.12</radius>
+            <length>0.002</length>
           </cylinder>
         </geometry>
         <material>
-          <ambient>1 1 1 1</ambient>
-          <diffuse>1 1 1 1</diffuse>
+          <ambient>1 1 1 0.6</ambient>
+          <diffuse>1 1 1 0.6</diffuse>
         </material>
       </visual>
 
     </link>
+
   </model>
 </sdf>
