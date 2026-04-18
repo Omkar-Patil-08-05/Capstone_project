@@ -39,23 +39,33 @@ class ControllerNode(Node):
             for name in self.drone_names
         }
 
+        # 🌲 TREE OBSTACLES (GRID COORDS)
+        self.obstacles = {
+            (4, 4),
+            (8, 6),
+            (12, 10),
+            (16, 14),
+            (20, 18),
+            (6, 18),
+            (18, 6),
+            (10, 20),
+            (14, 8)
+        }
+
         self.qmix = None
 
-        #  slower = smooth + no overload
-        self.timer = self.create_timer(0.8, self.control_loop)
+        self.timer = self.create_timer(0.9, self.control_loop) 
 
         self.get_logger().info("MARL Controller Started")
 
-    # ---------- helper ----------
     def get_unvisited_targets(self):
         targets = []
         for x in range(25):
             for y in range(25):
-                if (x, y) not in self.visited:
+                if (x, y) not in self.visited and (x, y) not in self.obstacles:
                     targets.append((x, y))
         return targets
 
-    # ---------- main loop ----------
     def control_loop(self):
 
         ordered_positions = [
@@ -88,7 +98,6 @@ class ControllerNode(Node):
 
         targets = self.get_unvisited_targets()
 
-        # ✅ ALL DRONES MOVE
         for i, drone_name in enumerate(self.drone_names):
 
             pos = self.current_positions[drone_name]
@@ -101,19 +110,20 @@ class ControllerNode(Node):
                 test_pos = self.action_mapper.get_next_pos(pos, a)
                 x, y = test_pos[0], test_pos[1]
 
+                # 🚨 HARD OBSTACLE BLOCK
+                if (x, y) in self.obstacles:
+                    continue 
+
                 score = 0
 
-                # strong collision penalty
                 if (x, y) in occupied:
                     score -= 300
 
-                # exploration reward
                 if (x, y) not in self.visited:
                     score += 30
                 else:
                     score -= 5
 
-                # distance to nearest unvisited
                 if targets:
                     min_dist = min(abs(x - tx) + abs(y - ty) for tx, ty in targets)
 
@@ -125,11 +135,9 @@ class ControllerNode(Node):
                     if final_mode:
                         score += 100 / (min_dist + 1)
 
-                # anti-oscillation
                 if (x, y) in self.history[drone_name]:
                     score -= 10
 
-                # slight QMIX bias
                 if a == (q_actions[i] % 4):
                     score += 2
 
@@ -140,7 +148,6 @@ class ControllerNode(Node):
             new_positions[drone_name] = best_pos
             occupied.add((best_pos[0], best_pos[1]))
 
-        # ---------- execute ----------
         for drone_name, new_pos in new_positions.items():
 
             old_pos = self.current_positions[drone_name]
@@ -149,7 +156,6 @@ class ControllerNode(Node):
             self.visited.add((new_pos[0], new_pos[1]))
             self.history[drone_name].append((new_pos[0], new_pos[1]))
 
-            # 🔥 only move if changed (prevents host error)
             if new_pos != old_pos:
                 self.action_mapper.move_drone(drone_name, new_pos)
 

@@ -1,0 +1,72 @@
+<sdf version="1.7">
+  <model name="tree_model">
+    <static>true</static>
+
+    <link name="link">
+
+      <!-- TRUNK -->
+      <visual name="trunk">
+        <geometry>
+          <cylinder>
+            <radius>0.2</radius>
+            <length>2.5</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.45 0.25 0.1 1</ambient>
+          <diffuse>0.45 0.25 0.1 1</diffuse>
+        </material>
+      </visual>
+
+      <collision name="trunk_collision">
+        <geometry>
+          <cylinder>
+            <radius>0.25</radius>
+            <length>2.5</length>
+          </cylinder>
+        </geometry>
+      </collision>
+
+      <!-- LEAVES (MULTI LAYERS FOR REAL LOOK) -->
+      <visual name="leaves1">
+        <pose>0 0 1.5 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.8</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0.0 0.6 0.0 1</ambient>
+          <diffuse>0.0 0.6 0.0 1</diffuse>
+        </material>
+      </visual>
+
+      <visual name="leaves2">
+        <pose>0.3 0 1.7 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.6</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0.0 0.7 0.0 1</ambient>
+          <diffuse>0.0 0.7 0.0 1</diffuse>
+        </material>
+      </visual>
+
+      <visual name="leaves3">
+        <pose>-0.3 0.2 1.6 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>0.6</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0.0 0.5 0.0 1</ambient>
+          <diffuse>0.0 0.5 0.0 1</diffuse>
+        </material>
+      </visual>
+
+    </link>
+  </model>
+</sdf>

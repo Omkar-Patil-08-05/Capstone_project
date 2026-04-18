@@ -76,6 +76,10 @@ marl_drone_project/
   main.py
   Readme.md
   requirements.txt
+models/
+  simple_drone/
+    model.config
+    model.sdf
 .gitignore
 my_world.sdf
 README.md
@@ -1590,6 +1594,24 @@ matplotlib==3.8.4
 tqdm==4.66.4
 </file>
 
+<file path="models/simple_drone/model.config">
+<?xml version="1.0"?>
+<model>
+  <name>simple_drone</name>
+  <version>1.0</version>
+  <sdf version="1.7">model.sdf</sdf>
+
+  <author>
+    <name>Omkar</name>
+    <email>none</email>
+  </author>
+
+  <description>
+    Simple quadcopter drone for MARL simulation
+  </description>
+</model>
+</file>
+
 <file path=".gitignore">
 # ROS2 build
 build/
@@ -1923,214 +1945,6 @@ source install/setup.bash
 ros2 run marl_controller controller_node
 </file>
 
-<file path="drone_ws/src/marl_controller/marl_controller/action_mapper.py">
-import subprocess
-import time
-
-
-class ActionMapper:
-
-    def __init__(self):
-        self.grid_size = 25
-        self.offset = -12
-
-    # 🔥 NEW FUNCTION (IMPORTANT)
-    def get_next_pos(self, current_pos, action):
-        x, y, z = current_pos
-        nx, ny = x, y
-
-        if action == 0:
-            nx = x + 1
-        elif action == 1:
-            nx = x - 1
-        elif action == 2:
-            ny = y + 1
-        elif action == 3:
-            ny = y - 1
-
-        nx = max(0, min(self.grid_size - 1, nx))
-        ny = max(0, min(self.grid_size - 1, ny))
-
-        return [nx, ny, z]
-
-    def execute_action(self, drone_name, action, current_pos, occupied):
-
-        x, y, z = current_pos
-
-        next_pos = self.get_next_pos(current_pos, action)
-        nx, ny = next_pos[0], next_pos[1]
-
-        # collision avoidance
-        if (nx, ny) in occupied:
-            return current_pos
-
-        # interpolation movement
-        steps = 5
-        for i in range(1, steps + 1):
-            ix = x + (nx - x) * (i / steps)
-            iy = y + (ny - y) * (i / steps)
-
-            wx = ix + self.offset
-            wy = iy + self.offset
-
-            cmd = f'gz service -s /world/default/set_pose --reqtype gz.msgs.Pose --reptype gz.msgs.Boolean --timeout 100 --req \'name: "{drone_name}", position: {{ x: {wx}, y: {wy}, z: 2 }}\''
-
-            subprocess.run(cmd, shell=True,
-                           stdout=subprocess.DEVNULL,
-                           stderr=subprocess.DEVNULL)
-
-            time.sleep(0.02)
-
-        return [nx, ny, 2.0]
-</file>
-
-<file path="drone_ws/src/marl_controller/marl_controller/controller_node.py">
-import rclpy
-from rclpy.node import Node
-import random
-
-from marl_controller.state_builder import StateBuilder
-from marl_controller.qmix_inference import QMIXInference
-from marl_controller.action_mapper import ActionMapper
-
-
-class ControllerNode(Node):
-
-    def __init__(self):
-        super().__init__('marl_controller')
-
-        self.num_drones = 6
-
-        self.drone_names = [
-            "drone1", "drone2", "drone3",
-            "drone4", "drone5", "drone6"
-        ]
-
-        self.state_builder = StateBuilder(num_drones=self.num_drones)
-        self.action_mapper = ActionMapper()
-
-        # START POSITIONS
-        self.current_positions = {
-            "drone1": [3, 3, 2.0],
-            "drone2": [12, 3, 2.0],
-            "drone3": [21, 3, 2.0],
-            "drone4": [3, 12, 2.0],
-            "drone5": [12, 12, 2.0],
-            "drone6": [21, 12, 2.0],
-        }
-
-        # 🔥 ZONE ASSIGNMENT
-        self.zones = {
-            "drone1": (0, 12, 0, 12),
-            "drone2": (12, 18, 0, 12),
-            "drone3": (18, 25, 0, 12),
-            "drone4": (0, 12, 12, 25),
-            "drone5": (12, 18, 12, 25),
-            "drone6": (18, 25, 12, 25),
-        }
-
-        self.visited = set()
-        self.qmix = None
-
-        self.timer = self.create_timer(0.1, self.control_loop)
-
-        self.get_logger().info("🚀 MARL Controller Started")
-
-    def in_zone(self, pos, zone):
-        x, y = pos[0], pos[1]
-        x_min, x_max, y_min, y_max = zone
-        return x_min <= x < x_max and y_min <= y < y_max
-
-    def control_loop(self):
-
-        ordered_positions = [
-            self.current_positions[name]
-            for name in self.drone_names
-        ]
-
-        self.state_builder.update_positions(ordered_positions)
-        states = self.state_builder.get_all_states()
-
-        if self.qmix is None:
-            print("Loading QMIX...")
-            self.qmix = QMIXInference(
-                model_path='/home/capstone/capstone_project/drone_ws/src/marl_controller/models/qmix_phase1.pth',
-                num_drones=self.num_drones,
-                state_size=len(states[0]),
-                action_size=6
-            )
-            print("✅ QMIX Loaded")
-
-        actions = self.qmix.get_actions(states)
-
-        occupied = set()
-
-        for i, drone_name in enumerate(self.drone_names):
-
-            pos = self.current_positions[drone_name]
-            zone = self.zones[drone_name]
-
-            action = actions[i]
-
-            # remove Z dimension
-            if action >= 4:
-                action = action % 4
-
-            # 🔥 ACTION FILTERING (ZONE + FRONTIER)
-            candidate_actions = [0, 1, 2, 3]
-            valid_actions = []
-
-            for a in candidate_actions:
-                test_pos = self.action_mapper.get_next_pos(pos, a)
-
-                if self.in_zone(test_pos, zone):
-                    valid_actions.append(a)
-
-            if not valid_actions:
-                valid_actions = candidate_actions
-
-            # 🔥 FRONTIER BIAS
-            best_actions = []
-            for a in valid_actions:
-                test_pos = self.action_mapper.get_next_pos(pos, a)
-                if (test_pos[0], test_pos[1]) not in self.visited:
-                    best_actions.append(a)
-
-            if best_actions:
-                action = random.choice(best_actions)
-            elif action not in valid_actions:
-                action = random.choice(valid_actions)
-
-            # execute movement
-            new_pos = self.action_mapper.execute_action(
-                drone_name,
-                action,
-                pos,
-                occupied
-            )
-
-            new_pos = [
-                int(round(new_pos[0])),
-                int(round(new_pos[1])),
-                2.0
-            ]
-
-            self.current_positions[drone_name] = new_pos
-            occupied.add((new_pos[0], new_pos[1]))
-            self.visited.add((new_pos[0], new_pos[1]))
-
-        coverage = len(self.visited) / (25 * 25)
-        print(f" Coverage: {coverage:.2f}")
-
-
-def main(args=None):
-    rclpy.init(args=args)
-    node = ControllerNode()
-    rclpy.spin(node)
-    node.destroy_node()
-    rclpy.shutdown()
-</file>
-
 <file path="drone_ws/src/marl_controller/marl_controller/state_builder.py">
 import numpy as np
 
@@ -2212,6 +2026,121 @@ class StateBuilder:
         return states
 </file>
 
+<file path="models/simple_drone/model.sdf">
+<sdf version="1.7">
+  <model name="simple_drone">
+    <static>true</static>
+
+    <link name="base_link">
+
+      <inertial>
+        <mass>1.0</mass>
+      </inertial>
+
+      <!-- BODY (BRIGHT CYAN, TILTED) -->
+      <visual name="body">
+        <pose>0 0 0 0.08 -0.08 0</pose>
+        <geometry>
+          <box>
+            <size>0.3 0.3 0.08</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0 1 1 1</ambient>
+          <diffuse>0 1 1 1</diffuse>
+        </material>
+      </visual>
+
+      <!-- ARM X (BRIGHT RED) -->
+      <visual name="arm_x">
+        <geometry>
+          <box>
+            <size>0.8 0.05 0.02</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>1 0 0 1</ambient>
+          <diffuse>1 0 0 1</diffuse>
+        </material>
+      </visual>
+
+      <!-- ARM Y (BRIGHT GREEN) -->
+      <visual name="arm_y">
+        <geometry>
+          <box>
+            <size>0.05 0.8 0.02</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0 1 0 1</ambient>
+          <diffuse>0 1 0 1</diffuse>
+        </material>
+      </visual>
+
+      <!-- PROPELLERS (SPIN BLUR STYLE) -->
+
+      <visual name="prop1">
+        <pose>0.4 0.4 0.06 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.12</radius>
+            <length>0.002</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1 1 1 0.6</ambient>
+          <diffuse>1 1 1 0.6</diffuse>
+        </material>
+      </visual>
+
+      <visual name="prop2">
+        <pose>-0.4 0.4 0.06 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.12</radius>
+            <length>0.002</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1 1 1 0.6</ambient>
+          <diffuse>1 1 1 0.6</diffuse>
+        </material>
+      </visual>
+
+      <visual name="prop3">
+        <pose>0.4 -0.4 0.06 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.12</radius>
+            <length>0.002</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1 1 1 0.6</ambient>
+          <diffuse>1 1 1 0.6</diffuse>
+        </material>
+      </visual>
+
+      <visual name="prop4">
+        <pose>-0.4 -0.4 0.06 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>0.12</radius>
+            <length>0.002</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>1 1 1 0.6</ambient>
+          <diffuse>1 1 1 0.6</diffuse>
+        </material>
+      </visual>
+
+    </link>
+
+  </model>
+</sdf>
+</file>
+
 <file path="drone_ws/spawn_drones.sh">
 #!/bin/bash
 
@@ -2225,11 +2154,11 @@ spawn() {
   gz service -s /world/default/create \
   --reqtype gz.msgs.EntityFactory \
   --reptype gz.msgs.Boolean \
-  --timeout 300 \
-  --req "sdf: '<sdf version=\"1.7\"><model name=\"$NAME\"><static>true</static><pose>$X $Y 2 0 0 0</pose><link name=\"base_link\"><inertial><mass>1.0</mass></inertial><visual name=\"body\"><geometry><cylinder><radius>0.2</radius><length>0.08</length></cylinder></geometry><material><diffuse>0.2 0.2 0.8 1</diffuse></material></visual><visual name=\"arm1\"><pose>0.4 0 0 0 0 0</pose><geometry><box><size>0.8 0.05 0.02</size></box></geometry><material><diffuse>0.8 0.2 0.2 1</diffuse></material></visual><visual name=\"arm2\"><pose>0 0.4 0 0 0 0</pose><geometry><box><size>0.05 0.8 0.02</size></box></geometry><material><diffuse>0.2 0.8 0.2 1</diffuse></material></visual></link></model></sdf>'"
+  --timeout 3000 \
+  --req "name: '$NAME', sdf_filename: 'model://simple_drone', pose: {position: {x: $X, y: $Y, z: 2}}" \
+  > /dev/null 2>&1
 }
 
-# 2D GRID (WITH OFFSET)
 spawn drone1 $((2+OFFSET)) $((2+OFFSET))
 spawn drone2 $((12+OFFSET)) $((2+OFFSET))
 spawn drone3 $((22+OFFSET)) $((2+OFFSET))
@@ -2242,38 +2171,29 @@ spawn drone6 $((22+OFFSET)) $((12+OFFSET))
 <sdf version="1.7">
   <world name="default">
 
-    <!-- Physics -->
     <physics name="1ms" type="ignored">
       <max_step_size>0.001</max_step_size>
       <real_time_factor>1.0</real_time_factor>
     </physics>
 
-    <!-- Sun -->
     <include>
       <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Sun</uri>
     </include>
 
-    <!-- 🔥 CUSTOM 25x25 GRID FLOOR -->
     <model name="grid_floor">
       <static>true</static>
       <pose>0 0 0 0 0 0</pose>
 
       <link name="link">
 
-        <!-- Base Plane -->
         <visual name="base">
           <geometry>
             <plane>
               <size>25 25</size>
             </plane>
           </geometry>
-          <material>
-            <ambient>0.9 0.9 0.9 1</ambient>
-            <diffuse>0.9 0.9 0.9 1</diffuse>
-          </material>
         </visual>
 
-        <!-- Grid Lines -->
         <visual name="grid_lines">
           <geometry>
             <plane>
@@ -2288,7 +2208,6 @@ spawn drone6 $((22+OFFSET)) $((12+OFFSET))
           </material>
         </visual>
 
-        <!-- Collision -->
         <collision name="collision">
           <geometry>
             <plane>
@@ -2302,6 +2221,221 @@ spawn drone6 $((22+OFFSET)) $((12+OFFSET))
 
   </world>
 </sdf>
+</file>
+
+<file path="drone_ws/src/marl_controller/marl_controller/action_mapper.py">
+import subprocess
+import time
+
+class ActionMapper:
+
+    def __init__(self):
+        self.offset = -12
+        self.grid_size = 25
+
+    def get_next_pos(self, pos, action):
+        x, y, z = pos
+
+        if action == 0:
+            x += 1
+        elif action == 1:
+            x -= 1
+        elif action == 2:
+            y += 1
+        elif action == 3:
+            y -= 1
+
+        x = max(0, min(self.grid_size - 1, x))
+        y = max(0, min(self.grid_size - 1, y))
+
+        return [x, y, 2.0]
+
+    def move_drone(self, drone_name, pos):
+
+        wx = float(pos[0] + self.offset)
+        wy = float(pos[1] + self.offset)
+
+        cmd = f'gz service -s /world/default/set_pose \
+--reqtype gz.msgs.Pose \
+--reptype gz.msgs.Boolean \
+--timeout 200 \
+--req \'name: "{drone_name}", position: {{ x: {wx}, y: {wy}, z: 2 }}\''
+
+        subprocess.Popen(
+            cmd,
+            shell=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        time.sleep(0.08)
+</file>
+
+<file path="drone_ws/src/marl_controller/marl_controller/controller_node.py">
+import rclpy
+from rclpy.node import Node
+from collections import deque
+import random
+
+from marl_controller.state_builder import StateBuilder
+from marl_controller.qmix_inference import QMIXInference
+from marl_controller.action_mapper import ActionMapper
+
+
+class ControllerNode(Node):
+
+    def __init__(self):
+        super().__init__('marl_controller')
+
+        self.num_drones = 6
+
+        self.drone_names = [
+            "drone1", "drone2", "drone3",
+            "drone4", "drone5", "drone6"
+        ]
+
+        self.state_builder = StateBuilder(num_drones=self.num_drones)
+        self.action_mapper = ActionMapper()
+
+        self.current_positions = {
+            "drone1": [3, 3, 2.0],
+            "drone2": [12, 3, 2.0],
+            "drone3": [21, 3, 2.0],
+            "drone4": [3, 12, 2.0],
+            "drone5": [12, 12, 2.0],
+            "drone6": [21, 12, 2.0],
+        }
+
+        self.visited = set()
+
+        self.history = {
+            name: deque(maxlen=5)
+            for name in self.drone_names
+        }
+
+        self.qmix = None
+
+        #  slower = smooth + no overload
+        self.timer = self.create_timer(0.8, self.control_loop)
+
+        self.get_logger().info("MARL Controller Started")
+
+    # ---------- helper ----------
+    def get_unvisited_targets(self):
+        targets = []
+        for x in range(25):
+            for y in range(25):
+                if (x, y) not in self.visited:
+                    targets.append((x, y))
+        return targets
+
+    # ---------- main loop ----------
+    def control_loop(self):
+
+        ordered_positions = [
+            self.current_positions[name]
+            for name in self.drone_names
+        ]
+
+        self.state_builder.update_positions(ordered_positions)
+        states = self.state_builder.get_all_states()
+
+        if self.qmix is None:
+            print("Loading QMIX...")
+            self.qmix = QMIXInference(
+                model_path='/home/capstone/capstone_project/drone_ws/src/marl_controller/models/qmix_phase1.pth',
+                num_drones=self.num_drones,
+                state_size=len(states[0]),
+                action_size=6
+            )
+            print("QMIX Loaded")
+
+        q_actions = self.qmix.get_actions(states)
+
+        occupied = set()
+        new_positions = {}
+
+        coverage = len(self.visited) / (25 * 25)
+
+        cleanup_mode = coverage > 0.6
+        final_mode = coverage > 0.9
+
+        targets = self.get_unvisited_targets()
+
+        # ✅ ALL DRONES MOVE
+        for i, drone_name in enumerate(self.drone_names):
+
+            pos = self.current_positions[drone_name]
+
+            best_score = -1e9
+            best_pos = pos
+
+            for a in range(4):
+
+                test_pos = self.action_mapper.get_next_pos(pos, a)
+                x, y = test_pos[0], test_pos[1]
+
+                score = 0
+
+                # strong collision penalty
+                if (x, y) in occupied:
+                    score -= 300
+
+                # exploration reward
+                if (x, y) not in self.visited:
+                    score += 30
+                else:
+                    score -= 5
+
+                # distance to nearest unvisited
+                if targets:
+                    min_dist = min(abs(x - tx) + abs(y - ty) for tx, ty in targets)
+
+                    score += 25 / (min_dist + 1)
+
+                    if cleanup_mode:
+                        score += 40 / (min_dist + 1)
+
+                    if final_mode:
+                        score += 100 / (min_dist + 1)
+
+                # anti-oscillation
+                if (x, y) in self.history[drone_name]:
+                    score -= 10
+
+                # slight QMIX bias
+                if a == (q_actions[i] % 4):
+                    score += 2
+
+                if score > best_score:
+                    best_score = score
+                    best_pos = test_pos
+
+            new_positions[drone_name] = best_pos
+            occupied.add((best_pos[0], best_pos[1]))
+
+        # ---------- execute ----------
+        for drone_name, new_pos in new_positions.items():
+
+            old_pos = self.current_positions[drone_name]
+
+            self.current_positions[drone_name] = new_pos
+            self.visited.add((new_pos[0], new_pos[1]))
+            self.history[drone_name].append((new_pos[0], new_pos[1]))
+
+            # 🔥 only move if changed (prevents host error)
+            if new_pos != old_pos:
+                self.action_mapper.move_drone(drone_name, new_pos)
+
+        coverage = len(self.visited) / (25 * 25)
+        print(f"Coverage: {coverage:.2f}")
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = ControllerNode()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
 </file>
 
 </files>
