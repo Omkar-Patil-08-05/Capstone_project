@@ -1,8 +1,12 @@
+import sys
+import os
+
+sys.path.append(os.path.expanduser("~/capstone_project"))
 import rclpy
 from rclpy.node import Node
 from collections import deque
 import random
-
+from results.logger import ResultLogger
 from marl_controller.state_builder import StateBuilder
 from marl_controller.qmix_inference import QMIXInference
 from marl_controller.action_mapper import ActionMapper
@@ -22,6 +26,7 @@ class ControllerNode(Node):
 
         self.state_builder = StateBuilder(num_drones=self.num_drones)
         self.action_mapper = ActionMapper()
+        self.logger = ResultLogger()
 
         self.current_positions = {
             "drone1": [3, 3, 2.0],
@@ -161,6 +166,15 @@ class ControllerNode(Node):
 
         coverage = len(self.visited) / (25 * 25)
         print(f"Coverage: {coverage:.2f}")
+        self.logger.log(coverage, ordered_positions)
+
+        if coverage >= 0.98:
+            print("✅ Coverage complete. Stopping...")
+
+            self.logger.close()
+
+            import os
+            os._exit(0)   # 🔥 FORCE EXIT (important for ROS)
 
 
 def main(args=None):
