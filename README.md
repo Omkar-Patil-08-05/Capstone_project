@@ -1,76 +1,90 @@
-# 🚁 MARL Drone Swarm for Search & Rescue (QMIX + ROS2 + Gazebo)
+# 🚁 MARL Drone Swarm for Search & Rescue  
+### *(QMIX + ROS2 + Gazebo + Visualization)*
+
+---
 
 ## 📌 Overview
 
-This project implements a **Multi-Agent Reinforcement Learning (MARL)** based drone swarm using the **QMIX algorithm** for coordinated exploration and coverage.
+This project implements a **Multi-Agent Reinforcement Learning (MARL)** based drone swarm using the **QMIX algorithm** for coordinated exploration and area coverage.
 
-The system simulates **multiple drones operating collaboratively** in a 3D grid environment and deploys the trained policy into a **realistic Gazebo simulation using ROS2**.
+The system transitions from a **custom grid-based training environment** to a **real-time multi-drone simulation in Gazebo using ROS2**, demonstrating how learned cooperative behavior can be deployed in a robotic system.
+
+The current implementation achieves:
+
+- Coordinated multi-drone exploration  
+- Near 100% area coverage  
+- Obstacle-aware navigation  
+- Real-time simulation with ROS2  
+- Result visualization (graphs + animation)
 
 ---
 
 ## 🎯 Objectives
 
-* Develop coordinated multi-drone exploration using MARL
-* Maximize area coverage with minimal overlap
-* Transition from training (grid world) to real-time simulation (Gazebo)
-* Build a scalable framework for **search & rescue applications**
+- Develop coordinated multi-drone exploration using MARL  
+- Maximize coverage while minimizing overlap  
+- Enable obstacle-aware navigation  
+- Bridge training → real-time robotic simulation  
+- Build a foundation for search & rescue systems  
 
 ---
 
 ## 🧠 Key Technologies
 
-* **Reinforcement Learning**: QMIX (Centralized Training, Decentralized Execution)
-* **Simulation**: Gazebo (GZ Sim)
-* **Middleware**: ROS2 (Jazzy)
-* **Language**: Python
-* **Environment**: Custom 3D Grid (25 × 25 × 3)
+- Reinforcement Learning: QMIX (CTDE paradigm)  
+- Simulation: Gazebo (GZ Sim)  
+- Middleware: ROS2 (Jazzy)  
+- Language: Python  
+- Visualization: Matplotlib (graphs + animation)  
+- Environment: Custom Grid (25 × 25 × 3)  
 
 ---
 
 ## 🏗️ System Architecture
 
-```
 Training Phase:
 Grid Environment → QMIX Training → Trained Model (.pth)
 
 Deployment Phase:
 Gazebo → State Builder → QMIX Inference → Action Mapper → Drone Movement
-```
+
+Evaluation Phase:
+Simulation Logs → CSV → Graphs + Heatmaps + Animation
 
 ---
 
 ## 📁 Project Structure
 
-```
 capstone_project/
 │
-├── drone_ws/                          # ROS2 workspace
-│   └── src/marl_controller/
-│       ├── marl_controller/
-│       │   ├── controller_node.py     # Main ROS2 controller
-│       │   ├── state_builder.py       # Builds RL state
-│       │   ├── action_mapper.py       # Converts actions → movement
-│       │   ├── qmix_inference.py      # Loads trained model
-│       │   └── qmix_agent.py
-│       │
-│       ├── models/
-│       │   └── qmix_phase1.pth        # Trained QMIX model
-│       │
-│       ├── package.xml
-│       └── setup.py
+├── drone_ws/                          # ROS2 workspace  
+│   └── src/marl_controller/  
+│       ├── marl_controller/  
+│       │   ├── controller_node.py  
+│       │   ├── state_builder.py  
+│       │   ├── action_mapper.py  
+│       │   ├── qmix_inference.py  
+│       │  
+│       ├── models/  
+│       │   └── qmix_phase1.pth  
 │
-├── marl_drone_project/                # Training code
-│   ├── env/grid_env.py               # Custom environment
-│   ├── train/train_qmix.py           # QMIX training
-│   ├── train/qmix_agent.py
-│   ├── utils/replay_buffer.py
-│   └── main.py
+├── marl_drone_project/                # Training code  
+│   ├── env/grid_env.py  
+│   ├── train/train_qmix.py  
+│   ├── utils/replay_buffer.py  
 │
-├── spawn_drones.sh                   # Spawns drones in Gazebo
-├── run_all.sh                        # Runs full system
-├── my_world.sdf                      # Gazebo world
-└── README.md
-```
+├── results/                           # NEW  
+│   ├── logger.py  
+│   ├── plot_results.py  
+│   ├── animate.py  
+│   ├── *.csv  
+│   └── *.png / *.gif  
+│
+├── models/simple_drone/  
+├── my_world.sdf  
+├── spawn_drones.sh  
+├── run_all.sh  
+└── README.md  
 
 ---
 
@@ -78,154 +92,145 @@ capstone_project/
 
 ### 1️⃣ Install Dependencies
 
-```bash
-sudo apt update
-sudo apt install ros-jazzy-desktop
-sudo apt install ros-jazzy-ros-gz
-```
+sudo apt update  
+sudo apt install ros-jazzy-desktop  
+sudo apt install ros-jazzy-ros-gz  
 
 ---
 
 ### 2️⃣ Setup Python Environment
 
-```bash
-cd marl_drone_project
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
+cd marl_drone_project  
+python3 -m venv venv  
+source venv/bin/activate  
+pip install -r requirements.txt  
 
 ---
 
 ### 3️⃣ Build ROS2 Workspace
 
-```bash
-cd drone_ws
-source /opt/ros/jazzy/setup.bash
-colcon build
-source install/setup.bash
-```
+cd drone_ws  
+source /opt/ros/jazzy/setup.bash  
+colcon build  
+source install/setup.bash  
 
 ---
 
 ## 🚀 Running the Project
 
-### 🔥 One Command (Recommended)
+### 🔥 Full System
 
-```bash
-./run_all.sh
-```
+./run_all.sh  
 
 ---
 
-### 🧪 Manual Run (Optional)
+## 🤖 System Functionality
 
-#### Terminal 1 — Gazebo
-
-```bash
-gz sim my_world.sdf
-```
-
-#### Terminal 2 — Spawn Drones
-
-```bash
-bash spawn_drones.sh
-```
-
-#### Terminal 3 — Controller
-
-```bash
-cd marl_drone_project
-source venv/bin/activate
-
-cd ../drone_ws
-source /opt/ros/jazzy/setup.bash
-source install/setup.bash
-
-ros2 run marl_controller controller_node
-```
-
----
-
-## 🤖 How It Works
-
-### 🧠 State Representation (24-dim)
+### 🧠 State Representation
 
 Each drone observes:
 
-* Own position (x, y, z)
-* Positions of other drones
-* Neighboring cell occupancy (6 directions)
+- Own position  
+- Neighbor drone positions  
+- Local spatial structure  
 
 ---
 
 ### 🎮 Action Space
 
-| Action | Movement                   |
-| ------ | -------------------------- |
-| 0      | +X                         |
-| 1      | -X                         |
-| 2      | +Y                         |
-| 3      | -Y                         |
-| 4      | +Z (ignored in deployment) |
-| 5      | -Z (ignored in deployment) |
+| Action | Movement |
+|--------|--------|
+| 0 | +X |
+| 1 | -X |
+| 2 | +Y |
+| 3 | -Y |
+| 4 | +Z |
+| 5 | -Z |
 
 ---
 
-### 🛰️ Execution Flow
+### 🚧 Obstacle Avoidance
 
-1. Get drone positions
-2. Build state (StateBuilder)
-3. QMIX predicts actions
-4. ActionMapper updates positions
-5. Gazebo updates drone positions
+- Static obstacles (trees) added in Gazebo  
+- Hard constraints prevent entering obstacle cells  
+- Drones dynamically navigate around obstacles  
 
 ---
 
-## 📊 Results
+### 🤝 Multi-Agent Coordination
 
-* Coordinated multi-agent exploration
-* Reduced overlap between drones
-* Emergent swarm behavior
-* Stable deployment in Gazebo
-
----
-
-## ⚠️ Limitations
-
-* Uses simplified drone model (boxes)
-* Movement via pose updates (not real physics control)
-* No obstacle avoidance (yet)
+- Simultaneous drone movement (non-blocking execution)  
+- Reduced overlap via reward shaping + heuristics  
+- Balanced exploration across agents  
 
 ---
 
-## 🚀 Future Improvements
+## 📊 Results & Visualization
 
-* ✅ Real drone model (quadrotor)
-* ✅ Obstacle avoidance & mapping
-* ✅ Coverage heatmap visualization
-* ✅ YOLO-based victim detection
-* ✅ Real-world deployment integration
+The system generates:
+
+- Coverage vs Time (efficiency & convergence)  
+- Heatmap (spatial exploration)  
+- Trajectories (coordination)  
+- Per-drone coverage (fairness)  
+- Coverage speed (efficiency analysis)  
+- Heatmap with obstacles (validation)  
+- Swarm animation (movement + coordination)  
+
+---
+
+## 🏆 Key Achievements
+
+- Near 100% coverage in 25×25 environment  
+- Emergent coordinated swarm behavior  
+- Successful deployment from training → simulation  
+- Obstacle-aware exploration  
+- Complete evaluation pipeline (logs → graphs → animation)  
+
+---
+
+## ⚠️ Current Limitations
+
+- Simplified drone model (no real physics)  
+- Grid-based movement abstraction  
+- No perception system yet  
+- Static obstacles only  
+
+---
+
+## 🚀 Future Work
+
+### Perception & Intelligence
+- YOLO-based victim detection  
+- Camera integration in Gazebo  
+- Object classification  
+
+### Navigation Enhancements
+- Dynamic obstacle avoidance  
+- Continuous motion (velocity control)  
+- Path smoothing  
+
+### Realism Improvements
+- Full quadrotor physics  
+- PX4 / MAVROS integration  
+- Outdoor terrain simulation  
+
+### System Expansion
+- Multi-zone coordination  
+- Communication-aware MARL  
+- Real-time dashboard  
 
 ---
 
 ## 👨‍💻 Author
 
-**Omkar Patil**
-Capstone Project — MARL Drone Swarm
+Omkar Patil  
+Capstone Project — MARL Drone Swarm  
 
 ---
 
-## ⭐ Acknowledgements
+## 📌 Summary
 
-* ROS2 Community
-* Gazebo Simulation
-* MARL & QMIX research papers
+This project demonstrates how multi-agent reinforcement learning enables coordinated autonomous exploration, bridging:
 
----
-
-## 📌 Note
-
-This project demonstrates the integration of **deep reinforcement learning with robotic simulation**, bridging the gap between theoretical AI and real-world autonomous systems.
-
----
+theoretical AI → robotic simulation → real-world applications
