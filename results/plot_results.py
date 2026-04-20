@@ -27,7 +27,7 @@ cov = pd.read_csv(cov_path)
 pos = pd.read_csv(pos_path)
 
 # -------------------------------
-# 1. COVERAGE GRAPH (IMPROVED)
+# 1. COVERAGE GRAPH
 # -------------------------------
 plt.figure()
 
@@ -50,7 +50,7 @@ plt.savefig(os.path.join(RESULTS_DIR, "coverage_plot.png"))
 print("Saved coverage_plot.png")
 
 # -------------------------------
-# 2. HEATMAP (IMPROVED)
+# 2. HEATMAP 
 # -------------------------------
 grid_size = 25
 heatmap = np.zeros((grid_size, grid_size))
@@ -76,7 +76,7 @@ plt.savefig(os.path.join(RESULTS_DIR, "heatmap.png"))
 print("Saved heatmap.png")
 
 # -------------------------------
-# 3. TRAJECTORIES (IMPROVED)
+# 3. TRAJECTORIES
 # -------------------------------
 plt.figure()
 
@@ -101,7 +101,7 @@ plt.savefig(os.path.join(RESULTS_DIR, "trajectories.png"))
 print("Saved trajectories.png")
 
 # -------------------------------
-# 4. PER-DRONE COVERAGE (NEW)
+# 4. PER-DRONE COVERAGE
 # -------------------------------
 drone_coverage = {}
 
@@ -121,7 +121,7 @@ plt.savefig(os.path.join(RESULTS_DIR, "per_drone_coverage.png"))
 print("Saved per_drone_coverage.png")
 
 # -------------------------------
-# 5. COVERAGE SPEED (NEW)
+# 5. COVERAGE SPEED
 # -------------------------------
 plt.figure()
 
@@ -138,14 +138,14 @@ plt.savefig(os.path.join(RESULTS_DIR, "coverage_speed.png"))
 print("Saved coverage_speed.png")
 
 # -------------------------------
-# 6. HEATMAP WITH OBSTACLES (NEW)
+# 6. HEATMAP WITH OBSTACLES 
 # -------------------------------
 plt.figure()
 
 plt.imshow(heatmap, origin="lower")
 plt.colorbar(label="Visit Frequency")
 
-# 🔴 OBSTACLES (MATCH CONTROLLER)
+#  OBSTACLES (MATCH CONTROLLER)
 obstacles = [
     (4, 4),
     (8, 6),

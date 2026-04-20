@@ -87,7 +87,7 @@ ani = animation.FuncAnimation(
     fig,
     update,
     frames=time_steps,
-    interval=150,   # speed (lower = faster)
+    interval=180,   # speed (lower = faster)
     blit=True
 )
 

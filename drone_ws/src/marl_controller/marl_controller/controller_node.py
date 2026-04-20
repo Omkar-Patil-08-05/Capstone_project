@@ -174,7 +174,7 @@ class ControllerNode(Node):
             self.logger.close()
 
             import os
-            os._exit(0)   # 🔥 FORCE EXIT (important for ROS)
+            os._exit(0)   # FORCE EXIT (important for ROS)
 
 
 def main(args=None):
